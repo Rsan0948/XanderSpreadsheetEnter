@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Income Tracker</title>
+<style>
+  :root {
+    --pink: #ff8fcf;
+    --pink-soft: #ffd6ee;
+    --purple: #a06bff;
+    --purple-deep: #6d3bd1;
+    --bg1: #fff0f8;
+    --bg2: #f3e9ff;
+    --card: #ffffff;
+    --ink: #5a3a6b;
+    --line: #f0d9f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Trebuchet MS", system-ui, sans-serif;
+    color: var(--ink);
+    background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+    min-height: 100vh;
+    padding: 28px 18px 60px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 30px;
+    margin: 6px 0 4px;
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    margin: 0 0 26px;
+    color: #b288c4;
+    font-size: 14px;
+  }
+  .card {
+    max-width: 1000px;
+    margin: 0 auto 26px;
+    background: var(--card);
+    border-radius: 22px;
+    padding: 24px 26px;
+    box-shadow: 0 10px 30px rgba(160, 107, 255, 0.18);
+    border: 1px solid var(--line);
+  }
+  .card h2 {
+    margin: 0 0 18px;
+    font-size: 18px;
+    color: var(--purple-deep);
+  }
+  .form-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #9a6fb0;
+    letter-spacing: .3px;
+  }
+  input, select {
+    font: inherit;
+    padding: 10px 12px;
+    border: 1.5px solid var(--pink-soft);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(160, 107, 255, 0.15);
+  }
+  .field input.amount { width: 120px; }
+  .field input[type="date"] { width: 165px; }
+  .field select { width: 190px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: 12px;
+    padding: 11px 22px;
+    color: #fff;
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    box-shadow: 0 6px 16px rgba(160, 107, 255, 0.32);
+    transition: transform .12s, box-shadow .12s, opacity .12s;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(0); opacity: .9; }
+  button.ghost {
+    background: #fff;
+    color: var(--purple-deep);
+    border: 1.5px solid var(--pink-soft);
+    box-shadow: none;
+    padding: 10px 14px;
+  }
+  .add-loc-row { margin-top: 14px; display: none; gap: 10px; align-items: flex-end; }
+  .add-loc-row.show { display: flex; }
+  .hint {
+    text-align: center;
+    color: #b288c4;
+    font-size: 12.5px;
+    margin: -10px auto 18px;
+    max-width: 1000px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead th {
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    color: #fff;
+    padding: 12px 10px;
+    text-align: left;
+    font-weight: 600;
+  }
+  thead th:first-child { border-top-left-radius: 14px; }
+  thead th:last-child { border-top-right-radius: 14px; }
+  tbody td {
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+    cursor: cell;
+  }
+  tbody tr:nth-child(even) { background: #fdf4fb; }
+  tbody tr:hover { background: #fbeaff; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.total { font-weight: 700; color: var(--purple-deep); }
+  td.delete-cell { text-align: center; cursor: default; }
+  td input.edit {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1.5px solid var(--purple);
+    border-radius: 8px;
+    font: inherit;
+  }
+  .del-btn {
+    background: #fff;
+    color: #d8569b;
+    border: 1.5px solid var(--pink-soft);
+    border-radius: 9px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    box-shadow: none;
+    font-weight: 600;
+  }
+  .del-btn:hover { background: #ffe6f4; transform: none; }
+  .empty {
+    text-align: center;
+    color: #c39bd3;
+    padding: 26px;
+    font-style: italic;
+  }
+  .totals-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--purple-deep);
+    font-weight: 600;
+  }
+  .toast {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    color: #fff;
+    padding: 12px 26px;
+    border-radius: 999px;
+    box-shadow: 0 8px 22px rgba(160, 107, 255, 0.4);
+    transition: transform .3s ease;
+    font-weight: 600;
+    z-index: 50;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+  <h1>&#10024; Income Tracker &#10024;</h1>
+  <p class="subtitle">Log it, see it, tweak it &mdash; all saved right here on this laptop.</p>
+
+  <div class="card">
+    <h2>Add an entry</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="f-date">Date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label for="f-location">Location</label>
+        <select id="f-location"></select>
+      </div>
+      <div id="amount-fields" style="display:flex; flex-wrap:wrap; gap:16px;"></div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="save-btn">Save entry &#128156;</button>
+      </div>
+    </div>
+    <div class="add-loc-row" id="add-loc-row">
+      <div class="field">
+        <label for="new-loc">New location name</label>
+        <input type="text" id="new-loc" placeholder="e.g. Saturday Market">
+      </div>
+      <button class="ghost" id="confirm-loc">Add</button>
+      <button class="ghost" id="cancel-loc">Cancel</button>
+    </div>
+  </div>
+
+  <p class="hint">&#128161; Tip: double&#8209;click any cell in the table below to edit it. Changes save automatically.</p>
+
+  <div class="card">
+    <h2>Your spreadsheet</h2>
+    <div style="overflow-x:auto;">
+      <table id="grid">
+        <thead><tr id="head-row"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <div class="totals-bar" id="totals-bar"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+let STATE = { payment_methods: [], columns: [], locations: [], rows: [] };
+const ADD_NEW = "__add_new__";
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function money(v) {
+  const n = Number(v) || 0;
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function load() {
+  const res = await fetch("/api/state");
+  STATE = await res.json();
+  renderForm();
+  renderGrid();
+}
+
+function renderForm() {
+  const dateEl = document.getElementById("f-date");
+  if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
+  const sel = document.getElementById("f-location");
+  sel.innerHTML = "";
+  STATE.locations.forEach(loc => {
+    const o = document.createElement("option");
+    o.value = loc; o.textContent = loc;
+    sel.appendChild(o);
+  });
+  const addOpt = document.createElement("option");
+  addOpt.value = ADD_NEW;
+  addOpt.textContent = "+ Add new location…";
+  sel.appendChild(addOpt);
+
+  const wrap = document.getElementById("amount-fields");
+  wrap.innerHTML = "";
+  STATE.payment_methods.forEach(m => {
+    const f = document.createElement("div");
+    f.className = "field";
+    f.innerHTML = `<label for="amt-${m}">${m} ($)</label>
+      <input class="amount" id="amt-${m}" type="number" min="0" step="0.01" placeholder="0.00">`;
+    wrap.appendChild(f);
+  });
+}
+
+function renderGrid() {
+  const head = document.getElementById("head-row");
+  head.innerHTML = "";
+  STATE.columns.forEach(c => {
+    const th = document.createElement("th");
+    th.textContent = c;
+    head.appendChild(th);
+  });
+  head.appendChild(Object.assign(document.createElement("th"), { textContent: "" }));
+
+  const body = document.getElementById("body");
+  body.innerHTML = "";
+
+  if (STATE.rows.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="empty" colspan="${STATE.columns.length + 1}">No entries yet &mdash; add your first one above! &#127800;</td>`;
+    body.appendChild(tr);
+  }
+
+  const totals = {};
+  STATE.payment_methods.forEach(m => totals[m] = 0);
+  let grand = 0;
+
+  STATE.rows.forEach((row, idx) => {
+    const tr = document.createElement("tr");
+    STATE.columns.forEach(col => {
+      const td = document.createElement("td");
+      const isNum = col !== "Date" && col !== "Location";
+      if (isNum) td.classList.add("num");
+      if (col === "Total") td.classList.add("total");
+      td.textContent = isNum ? money(row[col]) : (row[col] || "");
+      if (col !== "Total") {
+        td.title = "Double-click to edit";
+        td.addEventListener("dblclick", () => editCell(td, idx, col, row[col]));
+      }
+      tr.appendChild(td);
+    });
+    const del = document.createElement("td");
+    del.className = "delete-cell";
+    const btn = document.createElement("button");
+    btn.className = "del-btn";
+    btn.textContent = "Delete";
+    btn.addEventListener("click", () => removeRow(idx, row));
+    del.appendChild(btn);
+    tr.appendChild(del);
+    body.appendChild(tr);
+
+    STATE.payment_methods.forEach(m => totals[m] += Number(row[m]) || 0);
+    grand += Number(row.Total) || 0;
+  });
+
+  const bar = document.getElementById("totals-bar");
+  if (STATE.rows.length) {
+    const parts = STATE.payment_methods.map(m => `${m}: $${money(totals[m])}`);
+    parts.push(`<span style="color:var(--pink); font-size:15px;">Grand total: $${money(grand)}</span>`);
+    bar.innerHTML = parts.join(" &nbsp;&bull;&nbsp; ");
+  } else {
+    bar.innerHTML = "";
+  }
+}
+
+function editCell(td, idx, col, current) {
+  if (td.querySelector("input")) return;
+  const input = document.createElement("input");
+  input.className = "edit";
+  if (col === "Date") {
+    input.type = "date";
+    input.value = current || "";
+  } else if (col === "Location") {
+    input.type = "text";
+    input.value = current || "";
+  } else {
+    input.type = "number";
+    input.min = "0";
+    input.step = "0.01";
+    input.value = Number(current) || 0;
+  }
+  td.textContent = "";
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  let done = false;
+  const finish = async (save) => {
+    if (done) return;
+    done = true;
+    if (save && input.value !== String(current)) {
+      await saveCell(idx, col, input.value);
+    } else {
+      renderGrid();
+    }
+  };
+  input.addEventListener("blur", () => finish(true));
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    if (e.key === "Escape") { finish(false); }
+  });
+}
+
+async function saveCell(idx, col, value) {
+  const res = await fetch("/api/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ index: idx, column: col, value })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    await load();
+    toast("Saved ✓");
+  } else {
+    toast(data.error || "Could not save");
+    renderGrid();
+  }
+}
+
+async function removeRow(idx, row) {
+  const label = `${row.Date || "this entry"}${row.Location ? " — " + row.Location : ""}`;
+  if (!confirm(`Delete ${label}? This can't be undone.`)) return;
+  const res = await fetch("/api/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ index: idx })
+  });
+  if ((await res.json()).ok) {
+    await load();
+    toast("Entry deleted");
+  }
+}
+
+document.getElementById("f-location").addEventListener("change", e => {
+  const row = document.getElementById("add-loc-row");
+  if (e.target.value === ADD_NEW) {
+    row.classList.add("show");
+    document.getElementById("new-loc").focus();
+  } else {
+    row.classList.remove("show");
+  }
+});
+
+document.getElementById("cancel-loc").addEventListener("click", () => {
+  document.getElementById("add-loc-row").classList.remove("show");
+  const sel = document.getElementById("f-location");
+  sel.value = STATE.locations[0] || ADD_NEW;
+});
+
+document.getElementById("confirm-loc").addEventListener("click", async () => {
+  const name = document.getElementById("new-loc").value.trim();
+  if (!name) { toast("Type a location name first"); return; }
+  const res = await fetch("/api/location", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json();
+  STATE.locations = data.locations;
+  renderForm();
+  document.getElementById("f-location").value = name;
+  document.getElementById("add-loc-row").classList.remove("show");
+  document.getElementById("new-loc").value = "";
+  toast("Location added ✨");
+});
+
+document.getElementById("save-btn").addEventListener("click", async () => {
+  const date = document.getElementById("f-date").value;
+  const location = document.getElementById("f-location").value;
+  if (!date) { toast("Pick a date first"); return; }
+  if (!location || location === ADD_NEW) { toast("Choose a location first"); return; }
+
+  const payload = { Date: date, Location: location };
+  let anyAmount = false;
+  STATE.payment_methods.forEach(m => {
+    const v = document.getElementById("amt-" + m).value;
+    payload[m] = v || 0;
+    if (Number(v) > 0) anyAmount = true;
+  });
+  if (!anyAmount && !confirm("All amounts are blank. Save an empty entry anyway?")) return;
+
+  const res = await fetch("/api/entry", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if ((await res.json()).ok) {
+    STATE.payment_methods.forEach(m => document.getElementById("amt-" + m).value = "");
+    await load();
+    toast("Entry saved \u{1F389}");
+  }
+});
+
+load();
+</script>
+</body>
+</html>

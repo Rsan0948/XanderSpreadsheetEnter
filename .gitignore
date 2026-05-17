@@ -1,0 +1,8 @@
+# Her actual income data stays on the laptop only
+income.csv
+locations.json
+
+__pycache__/
+*.pyc
+.venv/
+venv/
