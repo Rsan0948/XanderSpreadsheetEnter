@@ -8,10 +8,16 @@ this file. Just run it and your browser opens automatically.
 import csv
 import json
 import os
+import socket
 import threading
+import urllib.request
 import webbrowser
 
 from flask import Flask, jsonify, render_template, request
+
+HOST = "127.0.0.1"
+PORT = 5000
+URL = f"http://{HOST}:{PORT}/"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "income.csv")
@@ -89,19 +95,26 @@ def save_location(name):
         json.dump(sorted(locs, key=str.lower), f, indent=2)
 
 
+def get_state():
+    return {
+        "payment_methods": PAYMENT_METHODS,
+        "columns": COLUMNS,
+        "locations": read_locations(),
+        "rows": read_rows(),
+    }
+
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Embed the initial state so the page paints data on first paint,
+    # with no extra round trip to /api/state.
+    payload = json.dumps(get_state()).replace("<", "\\u003c")
+    return render_template("index.html", initial_state=payload)
 
 
 @app.route("/api/state")
 def state():
-    return jsonify(
-        payment_methods=PAYMENT_METHODS,
-        columns=COLUMNS,
-        locations=read_locations(),
-        rows=read_rows(),
-    )
+    return jsonify(**get_state())
 
 
 @app.route("/api/entry", methods=["POST"])
@@ -120,7 +133,8 @@ def add_entry():
             save_location(row["Location"])
         rows.append(row)
         write_rows(rows)
-    return jsonify(ok=True)
+        new_index = len(rows) - 1
+    return jsonify(ok=True, row=row, index=new_index, locations=read_locations())
 
 
 @app.route("/api/update", methods=["POST"])
@@ -140,7 +154,8 @@ def update_cell():
         if col == "Location" and rows[idx]["Location"]:
             save_location(rows[idx]["Location"])
         write_rows(rows)
-    return jsonify(ok=True, row=rows[idx])
+        result = rows[idx]
+    return jsonify(ok=True, row=result, locations=read_locations())
 
 
 @app.route("/api/delete", methods=["POST"])
@@ -164,11 +179,28 @@ def add_location():
     return jsonify(ok=True, locations=read_locations())
 
 
-def open_browser():
-    webbrowser.open("http://127.0.0.1:5000/")
+def port_in_use():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.25)
+        return s.connect_ex((HOST, PORT)) == 0
+
+
+def open_when_ready():
+    """Open the browser the instant the server responds (not a fixed wait)."""
+    for _ in range(200):  # up to ~10s, but typically fires in well under 1s
+        try:
+            with urllib.request.urlopen(URL, timeout=0.25):
+                break
+        except OSError:
+            pass
+    webbrowser.open(URL)
 
 
 if __name__ == "__main__":
-    ensure_csv()
-    threading.Timer(1.2, open_browser).start()
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    # Already running? Just surface the existing instance instead of crashing.
+    if port_in_use():
+        webbrowser.open(URL)
+    else:
+        ensure_csv()
+        threading.Thread(target=open_when_ready, daemon=True).start()
+        app.run(host=HOST, port=PORT, debug=False, threaded=True)

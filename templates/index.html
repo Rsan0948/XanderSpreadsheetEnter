@@ -235,8 +235,14 @@
 
   <div class="toast" id="toast"></div>
 
+<script id="bootstrap" type="application/json">{{ initial_state | safe }}</script>
 <script>
-let STATE = { payment_methods: [], columns: [], locations: [], rows: [] };
+let STATE;
+try {
+  STATE = JSON.parse(document.getElementById("bootstrap").textContent);
+} catch (e) {
+  STATE = { payment_methods: [], columns: [], locations: [], rows: [] };
+}
 const ADD_NEW = "__add_new__";
 
 function toast(msg) {
@@ -393,7 +399,9 @@ async function saveCell(idx, col, value) {
   });
   const data = await res.json();
   if (data.ok) {
-    await load();
+    STATE.rows[idx] = data.row;
+    if (data.locations) STATE.locations = data.locations;
+    renderGrid();
     toast("Saved ✓");
   } else {
     toast(data.error || "Could not save");
@@ -410,7 +418,8 @@ async function removeRow(idx, row) {
     body: JSON.stringify({ index: idx })
   });
   if ((await res.json()).ok) {
-    await load();
+    STATE.rows.splice(idx, 1);
+    renderGrid();
     toast("Entry deleted");
   }
 }
@@ -468,14 +477,22 @@ document.getElementById("save-btn").addEventListener("click", async () => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  if ((await res.json()).ok) {
+  const data = await res.json();
+  if (data.ok) {
     STATE.payment_methods.forEach(m => document.getElementById("amt-" + m).value = "");
-    await load();
+    STATE.rows.push(data.row);
+    if (data.locations) STATE.locations = data.locations;
+    renderGrid();
     toast("Entry saved \u{1F389}");
   }
 });
 
-load();
+if (STATE && STATE.columns && STATE.columns.length) {
+  renderForm();
+  renderGrid();
+} else {
+  load();
+}
 </script>
 </body>
 </html>
