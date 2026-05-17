@@ -290,6 +290,16 @@ function renderForm() {
       <input class="amount" id="amt-${m}" type="number" min="0" step="0.01" placeholder="0.00">`;
     wrap.appendChild(f);
   });
+
+  syncLocUI();
+}
+
+function syncLocUI(focusInput) {
+  const sel = document.getElementById("f-location");
+  const row = document.getElementById("add-loc-row");
+  const needAdd = sel.value === ADD_NEW || STATE.locations.length === 0;
+  row.classList.toggle("show", needAdd);
+  if (needAdd && focusInput) document.getElementById("new-loc").focus();
 }
 
 function renderGrid() {
@@ -424,20 +434,13 @@ async function removeRow(idx, row) {
   }
 }
 
-document.getElementById("f-location").addEventListener("change", e => {
-  const row = document.getElementById("add-loc-row");
-  if (e.target.value === ADD_NEW) {
-    row.classList.add("show");
-    document.getElementById("new-loc").focus();
-  } else {
-    row.classList.remove("show");
-  }
-});
+document.getElementById("f-location").addEventListener("change", () => syncLocUI(true));
 
 document.getElementById("cancel-loc").addEventListener("click", () => {
-  document.getElementById("add-loc-row").classList.remove("show");
   const sel = document.getElementById("f-location");
   sel.value = STATE.locations[0] || ADD_NEW;
+  document.getElementById("new-loc").value = "";
+  syncLocUI();
 });
 
 document.getElementById("confirm-loc").addEventListener("click", async () => {
@@ -450,10 +453,10 @@ document.getElementById("confirm-loc").addEventListener("click", async () => {
   });
   const data = await res.json();
   STATE.locations = data.locations;
+  document.getElementById("new-loc").value = "";
   renderForm();
   document.getElementById("f-location").value = name;
-  document.getElementById("add-loc-row").classList.remove("show");
-  document.getElementById("new-loc").value = "";
+  syncLocUI();
   toast("Location added ✨");
 });
 
