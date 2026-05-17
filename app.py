@@ -22,6 +22,18 @@ URL = f"http://{HOST}:{PORT}/"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "income.csv")
 LOCATIONS_PATH = os.path.join(BASE_DIR, "locations.json")
+LOG_PATH = os.path.join(BASE_DIR, "setup.log")
+
+
+def log(msg):
+    """Append a timestamped line to setup.log; never crash if it fails."""
+    try:
+        import datetime
+        stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(f"[{stamp}] {msg}\n")
+    except OSError:
+        pass
 
 PAYMENT_METHODS = ["Cash", "Venmo", "PayPal", "Stripe", "Zelle"]
 COLUMNS = ["Date", "Location"] + PAYMENT_METHODS + ["Total"]
@@ -199,8 +211,14 @@ def open_when_ready():
 if __name__ == "__main__":
     # Already running? Just surface the existing instance instead of crashing.
     if port_in_use():
+        log("Already running on port %d - opened the existing window." % PORT)
         webbrowser.open(URL)
     else:
         ensure_csv()
+        log("App starting, serving at %s (data file: %s)" % (URL, CSV_PATH))
         threading.Thread(target=open_when_ready, daemon=True).start()
-        app.run(host=HOST, port=PORT, debug=False, threaded=True)
+        try:
+            app.run(host=HOST, port=PORT, debug=False, threaded=True)
+        except Exception as e:  # noqa: BLE001 - log anything before exiting
+            log("App stopped with an error: %r" % e)
+            raise
