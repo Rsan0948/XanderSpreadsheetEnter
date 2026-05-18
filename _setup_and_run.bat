@@ -1,7 +1,8 @@
 @echo off
-REM Internal worker: creates a private .venv on first run, installs all
-REM dependencies into it, then launches the app from that venv.
-REM You don't run this directly - double-click "Start Income Tracker" instead.
+REM Internal worker: stops any leftover instance, then (on first run)
+REM creates a private .venv, installs all dependencies into it, and
+REM launches the app from that venv.
+REM You don't run this directly - double-click "Start Income Tracker".
 REM Progress is recorded in setup.log so the first run is easy to confirm.
 cd /d "%~dp0"
 set "FIRSTRUN="
@@ -9,6 +10,33 @@ set "LOG=%~dp0setup.log"
 
 call :logline "Launcher started."
 
+REM ---------------------------------------------------------------
+REM Clean slate: kill anything left over from a previous run BEFORE
+REM we touch anything else, so we always start from a fresh state.
+REM ---------------------------------------------------------------
+call :logline "Cleaning up any previous instance..."
+set "KILLED="
+
+REM 1) Kill whatever is holding our port (the old running server).
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr /r /c:"127\.0\.0\.1:5000 " 2^>nul') do (
+  taskkill /F /PID %%P >nul 2>&1
+  if not errorlevel 1 set "KILLED=1"
+)
+
+REM 2) Kill any python/pythonw whose EXE is THIS folder's venv
+REM    (scoped to this folder so unrelated Python apps are untouched).
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$d=('%~dp0.venv\Scripts\').ToLower(); Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and ($_.ExecutablePath.ToLower() -eq ($d+'pythonw.exe') -or $_.ExecutablePath.ToLower() -eq ($d+'python.exe')) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue; '1' }" 2>nul | findstr "1" >nul 2>&1 && set "KILLED=1"
+
+if defined KILLED (
+  call :logline "Stopped a previous instance - waiting for the port to free up."
+  ping -n 2 127.0.0.1 >nul
+) else (
+  call :logline "Nothing was running - clean start."
+)
+
+REM ---------------------------------------------------------------
+REM Normal setup / launch
+REM ---------------------------------------------------------------
 if exist ".venv\Scripts\pythonw.exe" goto ensuredeps
 
 set "FIRSTRUN=1"

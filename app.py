@@ -38,7 +38,15 @@ def log(msg):
 PAYMENT_METHODS = ["Cash", "Venmo", "PayPal", "Stripe", "Zelle"]
 COLUMNS = ["Date", "Location"] + PAYMENT_METHODS + ["Total"]
 
+# Bump this whenever the page changes so you can confirm at a glance
+# (shown in the page footer) which version is actually being served.
+APP_VERSION = "2026-05-18.1"
+
 app = Flask(__name__)
+# Re-read templates on every request so swapping index.html only needs a
+# browser refresh - no app restart required.
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 _lock = threading.Lock()
 
 
@@ -121,7 +129,7 @@ def index():
     # Embed the initial state so the page paints data on first paint,
     # with no extra round trip to /api/state.
     payload = json.dumps(get_state()).replace("<", "\\u003c")
-    return render_template("index.html", initial_state=payload)
+    return render_template("index.html", initial_state=payload, version=APP_VERSION)
 
 
 @app.route("/api/state")
